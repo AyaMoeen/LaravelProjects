@@ -25,43 +25,50 @@ class RoomSeeder extends Seeder
             'hotel_id' => $hotel1->id,
             'type' => 'Single Room',
             'price' => 80.00,
-            'capacity' => 1
+            'capacity' => 1,
+            'image' => 'uploads/hotels/YildizRoom2.jpg',
         ]);
         Room::create([
             'hotel_id' => $hotel1->id,
-            'type' => 'Double Room',
+            'type' => 'Triple Room',
             'price' => 120.00,
-            'capacity' => 2
+            'capacity' => 3,
+            'image' => 'uploads/hotels/YildizRoom1.jpg',
         ]);
         Room::create([
             'hotel_id' => $hotel2->id,
-            'type' => 'Suite',
+            'type' => 'Double Room',
             'price' => 200.00,
-            'capacity' => 4
+            'capacity' => 2,
+            'image' => 'uploads/hotels/RoyalSuitesRoom1.jpg',
         ]);
         Room::create([
             'hotel_id' => $hotel3->id,
-            'type' => 'Double Room',
+            'type' => 'Suite',
             'price' => 140.00,
-            'capacity' => 2
+            'capacity' => 2,
+            'image' => 'uploads/hotels/RoyalCourtRoom1.jpg',
         ]);
         Room::create([
             'hotel_id' => $hotel4->id,
             'type' => 'Executive Suite',
             'price' => 350.00,
-            'capacity' => 3
+            'capacity' => 1,
+            'image' => 'uploads/hotels/MillenniumRoom1.jpg',
         ]);
         Room::create([
             'hotel_id' => $hotel5->id,
-            'type' => 'Presidential Suite',
+            'type' => 'Suite',
             'price' => 500.00,
-            'capacity' => 5
+            'capacity' => 1,
+            'image' => 'uploads/hotels/JacirRoom1.jpg',
         ]);
         Room::create([
             'hotel_id' => $hotel6->id,
             'type' => 'Double Room',
             'price' => 100.00,
-            'capacity' => 2
+            'capacity' => 2,
+            'image' => 'uploads/hotels/QPlazaRoom1.jpg',
         ]);
     }
 }

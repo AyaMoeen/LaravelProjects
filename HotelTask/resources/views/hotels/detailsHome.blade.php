@@ -10,6 +10,18 @@
 
     <div class="header">
         <h1>{{ $hotel->name }}</h1>
+        @include('layouts.menu')
+        <form action="{{ route('hotels.index') }}" method="GET" class="search-form" style="margin-bottom: 20px;">
+            <input
+                type="text"
+                name="search"
+                placeholder="Search...."
+                value="{{ request('search') }}"
+                style="padding: 8px; width: 320px;"
+            >
+
+            <button type="submit" style="padding: 8px 16px;">Search</button>
+        </form>
     </div>
 
     <div class="container">
@@ -41,6 +53,7 @@
         <div class="room-list">
             @forelse ($rooms as $room)
                 <div class="room-card">
+                     <img src="{{ asset($room->image) }}" alt="{{ $room->type }}" class="room-image">
                     <div class="room-body">
                         <h3>{{ $room->type }}</h3>
                         <p class="price">₪{{ number_format($room->price, 2) }} ILS</p>

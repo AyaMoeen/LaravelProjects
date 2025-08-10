@@ -10,7 +10,7 @@
 
     <div class="header">
         <h1>Hotel Directory</h1>
-
+        @include('layouts.menu') 
         <form action="{{ route('hotels.index') }}" method="GET" class="search-form" style="margin-bottom: 20px;">
             <input
                 type="text"
