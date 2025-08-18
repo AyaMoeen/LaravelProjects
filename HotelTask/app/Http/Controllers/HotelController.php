@@ -18,7 +18,6 @@ class HotelController extends Controller
 
         $location = null;
         $price = null;
-
         if ($search !== '') {
             preg_match('/\d+(\.\d+)?/', $search, $priceMatch);
 
@@ -38,9 +37,10 @@ class HotelController extends Controller
         $hotels = Hotel::with('rooms')
                     ->filter($filters)
                     ->get();
-
+        //add resource and return json response
         return view('hotels.index', compact('hotels'));
     }
+    //note :: add validation request
 
     public function show(Request $request, string $id)
     {
@@ -58,4 +58,13 @@ class HotelController extends Controller
 
         return view('hotels.detailsHome', compact('hotel', 'rooms'));
     }
+
+    public function destroy($id) {
+        
+        $hotel = Hotel::findOrFail($id);
+        $hotel->delete();
+        return response()->json(['message' => 'Hotel deleted successfully']);
+    }
+
+    //delete bulk record 
 }

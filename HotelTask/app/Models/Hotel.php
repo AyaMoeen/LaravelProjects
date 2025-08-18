@@ -8,6 +8,9 @@ use Illuminate\Database\Eloquent\Builder;
 
 class Hotel extends Model
 {
+
+    // soft delete 
+    // activity log in database (search + task)
     protected $fillable = ['name', 'location', 'description', 'rating', 'image'];
     
     public function rooms() {
