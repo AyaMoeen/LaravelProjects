@@ -5,11 +5,13 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Hotel;
 use App\Models\Room;
+use App\Http\Resources\HotelResource;
+use App\Http\Resources\RoomResource;
 
 class HotelController extends Controller
 {
     public function index(Request $request)
-    {
+    {   //note :: add validation request 
         $request->validate([
             'search' => 'nullable|string|max:255',
         ]);
@@ -33,15 +35,22 @@ class HotelController extends Controller
             'location' => $location,
             'price' => $price,
         ];
-
+        // // return Hotel::with('rooms')
+        // //             ->filter($filters)
+        // //             ->get()
+        // //             ->toResourceCollection();
         $hotels = Hotel::with('rooms')
+                    ->withCount('rooms')
                     ->filter($filters)
-                    ->get();
-        //add resource and return json response
-        return view('hotels.index', compact('hotels'));
-    }
-    //note :: add validation request
+                    ->paginate(3) 
+                    ->withQueryString(); 
 
+        return HotelResource::collection($hotels)
+                    ->response()
+                    ->setStatusCode(200);  
+    }
+    //note :: add validation request 
+ 
     public function show(Request $request, string $id)
     {
         $request->validate([
@@ -56,7 +65,10 @@ class HotelController extends Controller
                 ->orderBy('price')
                 ->paginate(5);
 
-        return view('hotels.detailsHome', compact('hotel', 'rooms'));
+        return [
+            'hotel' => new HotelResource($hotel),
+            'rooms' => RoomResource::collection($rooms)->response()->getData(true),
+        ];
     }
 
     public function destroy($id) {
@@ -66,5 +78,5 @@ class HotelController extends Controller
         return response()->json(['message' => 'Hotel deleted successfully']);
     }
 
-    //delete bulk record 
+    //delete bulk record  multi id 
 }
