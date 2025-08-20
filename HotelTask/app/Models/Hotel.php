@@ -5,11 +5,10 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
-
+use Illuminate\Database\Eloquent\SoftDeletes;
 class Hotel extends Model
 {
-
-    // soft delete 
+    use SoftDeletes;
     // activity log in database (search + task)
     protected $fillable = ['name', 'location', 'description', 'rating', 'image'];
     
