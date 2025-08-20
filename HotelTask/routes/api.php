@@ -6,3 +6,4 @@ use App\Http\Controllers\HotelController;
 Route::get('/', [HotelController::class, 'index']);
 Route::get('/hotels/{id}',[HotelController::class, 'show']);
 Route::delete('/hotels/{id}', [HotelController::class, 'destroy']);
+Route::delete('/bulk', [HotelController::class, 'bulkDestroy']);

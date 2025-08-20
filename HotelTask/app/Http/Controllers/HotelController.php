@@ -7,15 +7,14 @@ use App\Models\Hotel;
 use App\Models\Room;
 use App\Http\Resources\HotelResource;
 use App\Http\Resources\RoomResource;
+use App\Http\Requests\RoomFilterRequest;
+use App\Http\Requests\searchRequest;
+use App\Http\Requests\BulkRequest;
 
 class HotelController extends Controller
 {
-    public function index(Request $request)
-    {   //note :: add validation request 
-        $request->validate([
-            'search' => 'nullable|string|max:255',
-        ]);
-        
+    public function index(searchRequest $request)
+    {   
         $search = trim($request->input('search', ''));
 
         $location = null;
@@ -49,15 +48,9 @@ class HotelController extends Controller
                     ->response()
                     ->setStatusCode(200);  
     }
-    //note :: add validation request 
  
-    public function show(Request $request, string $id)
+    public function show(RoomFilterRequest $request, string $id)
     {
-        $request->validate([
-            'min_price' => 'nullable|numeric|min:0',
-            'max_price' => 'nullable|numeric|min:0',
-        ]);
-
         $hotel = Hotel::findOrFail($id);
 
         $rooms = $hotel->rooms()
@@ -78,5 +71,14 @@ class HotelController extends Controller
         return response()->json(['message' => 'Hotel deleted successfully']);
     }
 
-    //delete bulk record  multi id 
+    public function bulkDestroy(BulkRequest $request) {
+        
+        $ids = $request->input('ids');
+        Hotel::whereIn('id', $ids)->delete();
+
+        return response()->json([
+            'message' => 'Hotels deleted successfully',
+            'deleted_ids' => $ids
+        ]);
+    }
 }
