@@ -6,12 +6,23 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
+use App\Exceptions\InvalidImageException;
+
 class Hotel extends Model
 {
-    use SoftDeletes;
-    // activity log in database (search + task)
+    use SoftDeletes, LogsActivity;
     protected $fillable = ['name', 'location', 'description', 'rating', 'image'];
-    
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->useLogName('hotel')
+            ->logFillable()
+            ->logOnlyDirty();
+    }
+
     public function rooms() {
         return $this->hasMany(Room::class);
     }
@@ -30,5 +41,12 @@ class Hotel extends Model
         }
         
         return $query;
+    }
+
+    public function uploadImage($file) {
+        if ($file && $file->isValid()) {
+            return $file->store('hotels', 'public');
+        }
+        throw new InvalidImageException();
     }
 }
