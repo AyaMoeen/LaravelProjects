@@ -13,6 +13,7 @@ use App\Http\Requests\BulkRequest;
 use App\Http\Requests\StoreHotelRequest;
 use App\Traits\ApiResponse;
 use App\Services\HotelSearchService;
+use Illuminate\Http\Response;
 
 class HotelController extends Controller
 {
@@ -24,6 +25,8 @@ class HotelController extends Controller
         $this->hotelSearch = $hotelSearch;
     }
 
+    // Store Exception message in Log File and add specific size to log 
+
     public function index(searchRequest $request)
     {   
         $search = trim($request->input('search', ''));
@@ -32,12 +35,12 @@ class HotelController extends Controller
         $hotels = Hotel::with('rooms')
                     ->withCount('rooms')
                     ->filter($filters)
-                    ->paginate(3) 
+                    ->paginate(config('pagination.hotels_per_page')) 
                     ->withQueryString(); 
 
         return HotelResource::collection($hotels)
                     ->response()
-                    ->setStatusCode(200);  
+                    ->setStatusCode(Response::HTTP_OK);  
     }
  
     public function show(RoomFilterRequest $request, string $id)
@@ -47,7 +50,7 @@ class HotelController extends Controller
         $rooms = $hotel->rooms()
                 ->priceRange($request->input('min_price'), $request->input('max_price'))
                 ->orderBy('price')
-                ->paginate(5);
+                ->paginate(config('pagination.rooms_per_page'));
 
         return [
             'hotel' => new HotelResource($hotel),
@@ -60,11 +63,11 @@ class HotelController extends Controller
         $hotel = Hotel::find($id);
     
         if (!$hotel) {
-            return $this->errorResponse('Hotel not found', 404);
+            return $this->errorResponse('Hotel not found', Response::HTTP_NOT_FOUND);
        }
    
         $hotel->delete();
-        return $this->successResponse([], 'Hotel deleted successfully', 201);
+        return $this->successResponse([], 'Hotel deleted successfully', Response::HTTP_OK);
     }
 
 
@@ -73,7 +76,7 @@ class HotelController extends Controller
         $ids = $request->input('ids', []); 
 
         if (empty($ids)) {
-            return $this->errorResponse([], 'No IDs provided', 400); 
+            return $this->errorResponse([], 'No IDs provided', Response::HTTP_BAD_REQUEST); 
         }
         $hotels = Hotel::whereIn('id', $ids)->get();
         $foundIds = $hotels->pluck('id')->toArray();
@@ -82,7 +85,7 @@ class HotelController extends Controller
             return $this->errorResponse([
                 'deleted_ids'   => [],
                 'not_found_ids' => $ids
-            ], 'No hotels found for deletion', 404);
+            ], 'No hotels found for deletion', Response::HTTP_NOT_FOUND);
         }
         
         Hotel::whereIn('id', $foundIds)->delete();
@@ -99,7 +102,7 @@ class HotelController extends Controller
         return $this->successResponse([
             'deleted_ids'   => $foundIds,
             'not_found_ids' => array_diff($ids, $foundIds),
-        ], 'Hotels deleted successfully', 200);
+        ], 'Hotels deleted successfully', Response::HTTP_OK);
     }
 
 public function store(StoreHotelRequest $request)
@@ -115,12 +118,12 @@ public function store(StoreHotelRequest $request)
         $hotel->fill($data);
         $hotel->save();
 
-        return $this->successResponse($hotel, 'Hotel created successfully!', 201);
+        return $this->successResponse($hotel,  __('messages.hotel_created'), Response::HTTP_CREATED);
 
     } catch (InvalidImageException $e) {
         return $this->errorResponse([], $e->getMessage(), $e->getCode());
     } catch (\Exception $e) {
-        return $this->errorResponse($e->getMessage(), 400);
+        return $this->errorResponse($e->getMessage(), Response::HTTP_BAD_REQUEST);
     }
 }
 
