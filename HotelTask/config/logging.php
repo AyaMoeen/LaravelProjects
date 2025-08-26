@@ -55,6 +55,7 @@ return [
         'stack' => [
             'driver' => 'stack',
             'channels' => explode(',', (string) env('LOG_STACK', 'single')),
+            'tap' => [App\Logging\LogFile::class],
             'ignore_exceptions' => false,
         ],
 
@@ -65,12 +66,19 @@ return [
             'replace_placeholders' => true,
         ],
 
+        // 'daily' => [
+        //     'driver' => 'daily',
+        //     'path' => storage_path('logs/laravel.log'),
+        //     'level' => env('LOG_LEVEL', 'debug'),
+        //     'days' => env('LOG_DAILY_DAYS', 14),
+        //     'replace_placeholders' => true,
+        // ],
         'daily' => [
             'driver' => 'daily',
-            'path' => storage_path('logs/laravel.log'),
+            'path' => storage_path('logs/laravel.log'), 
             'level' => env('LOG_LEVEL', 'debug'),
-            'days' => env('LOG_DAILY_DAYS', 14),
-            'replace_placeholders' => true,
+            'days' => 14,
+            'tap' => [App\Logging\LogFile::class],
         ],
 
         'slack' => [

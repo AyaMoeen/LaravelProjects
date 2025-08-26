@@ -3,6 +3,9 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Support\Facades\Log;
 
 class StoreHotelRequest extends FormRequest
 {
@@ -28,5 +31,19 @@ class StoreHotelRequest extends FormRequest
             'rating' => 'required|integer|min:1|max:5',
             'image' => 'required|file|mimes:jpg,jpeg,png|max:2048', 
         ];
+    }
+
+    protected function failedValidation(Validator $validator)
+    {
+        $errors = $validator->errors()->all();
+
+        Log::error('Validation failed for Hotel store: ' . implode(', ', $errors));
+
+        throw new HttpResponseException(
+            response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422)
+        );
     }
 }

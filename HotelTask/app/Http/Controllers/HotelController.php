@@ -12,26 +12,22 @@ use App\Http\Requests\searchRequest;
 use App\Http\Requests\BulkRequest;
 use App\Http\Requests\StoreHotelRequest;
 use App\Traits\ApiResponse;
-use App\Services\HotelSearchService;
-use Illuminate\Http\Response;
+// use App\Services\HotelSearchService;
+use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpFoundation\Response;
+use App\Exceptions\InvalidImageException;
+use App\Http\Requests\redisrequest;
 
 class HotelController extends Controller
 {
     use ApiResponse;
-    protected $hotelSearch;
-
-    public function __construct(HotelSearchService $hotelSearch)
-    {
-        $this->hotelSearch = $hotelSearch;
-    }
-
-    // Store Exception message in Log File and add specific size to log 
 
     public function index(searchRequest $request)
     {   
         $search = trim($request->input('search', ''));
-        $filters = $this->hotelSearch->parseSearchInput($search);
-
+        $filters = (new Hotel)->parseSearchInput($search); 
+    
         $hotels = Hotel::with('rooms')
                     ->withCount('rooms')
                     ->filter($filters)
@@ -108,6 +104,7 @@ class HotelController extends Controller
 public function store(StoreHotelRequest $request)
 {
     $data = $request->validated();
+    Log::info('Hotel store request validated', ['data' => $data]);
     try {
         
         $data['image'] = $request->file('image') 
@@ -116,15 +113,108 @@ public function store(StoreHotelRequest $request)
 
         $hotel = new Hotel;
         $hotel->fill($data);
+        Log::info('About to save new hotel', ['hotel' => $hotel->toArray()]);
         $hotel->save();
+        Log::info("Hotel created successfully", ['hotel_id' => $hotel->id]);
+
+
+        $hotelId = $hotel->id;
+        $startDate = $data['start_date'] ?? now()->toDateString();
+        $endDate   = $data['end_date'] ?? now()->addDays(30)->toDateString();
+
+        $redisKey = "hotel:{$hotelId}:{$startDate}:{$endDate}";
+
+        Redis::set($redisKey, json_encode([
+            'hotel_id'   => $hotelId,
+            'name'       => $hotel->name,
+            'image'      => $hotel->image,
+            'start_date' => $startDate,
+            'end_date'   => $endDate,
+        ]));
 
         return $this->successResponse($hotel,  __('messages.hotel_created'), Response::HTTP_CREATED);
 
     } catch (InvalidImageException $e) {
-        return $this->errorResponse([], $e->getMessage(), $e->getCode());
+        Log::error('Image upload failed: ' . $e->getMessage(), [
+            'exception' => $e,
+            'trace'     => $e->getTraceAsString(),
+        ]);
+
+        return $this->errorResponse('Image upload failed: ' . $e->getMessage(), Response::HTTP_BAD_REQUEST);
+
     } catch (\Exception $e) {
-        return $this->errorResponse($e->getMessage(), Response::HTTP_BAD_REQUEST);
+        Log::error('Unexpected error in Hotel@store: ' . $e->getMessage(), [
+            'exception' => $e,
+            'trace'     => $e->getTraceAsString()
+        ]);
+
+        return $this->errorResponse('Something went wrong, please try again.', Response::HTTP_INTERNAL_SERVER_ERROR);
     }
 }
+
+public function getFromRedis($hotelId, $startDate, $endDate)
+{
+    $redisKey = "hotel:{$hotelId}:{$startDate}:{$endDate}";
+    $hotelData = Redis::get($redisKey);
+
+    if ($hotelData) {
+        return $this->successResponse(
+                json_decode($hotelData, true),
+                __('Hotel retrieved from Redis'),
+                Response::HTTP_OK
+            );
+    }
+
+    return $this->errorResponse('Hotel not found in Redis', Response::HTTP_NOT_FOUND);
+}
+public function update(redisrequest $request, $hotelId, $start_date, $end_date)
+{
+    try {
+        $data = $request->validated();
+        
+        $redisKey = "hotel:{$hotelId}:{$start_date}:{$end_date}";
+
+        $hotelData = Redis::get($redisKey);
+
+        if (!$hotelData) {
+            return $this->errorResponse('Hotel not found in Redis', Response::HTTP_NOT_FOUND);
+        }
+
+        $hotelData = json_decode($hotelData, true);
+
+        $updatedData = array_merge($hotelData, $data);
+
+        Redis::set($redisKey, json_encode($updatedData));
+
+        return $this->successResponse($updatedData, 'Hotel updated in Redis successfully', Response::HTTP_OK);
+
+    } catch (\Exception $e) {
+        Log::error('Error updating hotel in Redis: ' . $e->getMessage());
+        return $this->errorResponse('Something went wrong, please try again.', Response::HTTP_INTERNAL_SERVER_ERROR);
+    }
+}
+
+public function deleteFromRedis($hotelId, $startDate, $endDate)
+{
+    try {
+        $redisKey = "hotel:{$hotelId}:{$startDate}:{$endDate}";
+
+        if (!Redis::exists($redisKey)) {
+            return $this->errorResponse('Hotel not found in Redis', Response::HTTP_NOT_FOUND);
+        }
+
+        Redis::del($redisKey);
+
+        return $this->successResponse(
+            null,
+            'Hotel deleted from Redis successfully',
+            Response::HTTP_OK
+        );
+    } catch (\Exception $e) {
+        Log::error('Error deleting hotel from Redis: ' . $e->getMessage());
+        return $this->errorResponse('Something went wrong, please try again.', Response::HTTP_INTERNAL_SERVER_ERROR);
+    }
+}
+
 
 }
