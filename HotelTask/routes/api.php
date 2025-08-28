@@ -24,8 +24,8 @@ Route::middleware([SetLocale::class])->group(function () {
    Route::get('/hotelsredis/{hotelId}/{startdate}/{enddate}', [HotelController::class, 'getFromRedis']);
    Route::put('/hotelsupdate/{hotelId}/{start_date}/{end_date}', [HotelController::class, 'update']);
    Route::delete('hotelsdelete/{hotelId}/{startDate}/{endDate}', [HotelController::class, 'deleteFromRedis']);
-
-
+   Route::post('/storeredis', [HotelController::class, 'storeInRedis']);
+   Route::get('/hotelsredisbydate/{startdate}/{enddate}', [HotelController::class, 'getFromRedisByDate']);
 
 
 });
