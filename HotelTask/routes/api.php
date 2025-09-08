@@ -11,6 +11,13 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Http\Request;
 use App\Services\KafkaService;
 
+Route::get('/slow-request', function () {
+    sleep(10);
+    return response()->json(['message' => 'Slow request done!']);
+});
+
+
+
 Route::post('/send-kafka', function (Request $request) {
     $data = $request->all(); // get JSON payload from Postman
 
@@ -23,10 +30,6 @@ Route::post('/send-kafka', function (Request $request) {
     ]);
 });
 
-Route::get('/slow-request', function () {
-    sleep(10); 
-    return response()->json(['message' => 'Slow request done!']);
-});
 Route::get('/test-log', function () {
     Log::error('This is a test error log from /api/test-log');
     return response()->json(['status' => 'log written']);

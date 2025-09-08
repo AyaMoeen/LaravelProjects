@@ -60,7 +60,7 @@ class LogException
         
             Log::warning('Slow request detected', $details);
         
-            Mail::to('ayamoinn95@gmail.com')->send(new SlowRequestDetected($details));
+        //   Mail::to('ayamoinn95@gmail.com')->send(new SlowRequestDetected($details));
         }
 
         if ($status >= 400) {

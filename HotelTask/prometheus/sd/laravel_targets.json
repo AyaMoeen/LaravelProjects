@@ -1,0 +1,10 @@
+[
+  {
+    "labels": { "env": "dev" },
+    "targets": [
+      "http://host.docker.internal:8000/api/slow-request",
+      "http://host.docker.internal:8000/api/db-slow",
+      "http://host.docker.internal:8000/api/http-timeout"
+    ]
+  }
+]

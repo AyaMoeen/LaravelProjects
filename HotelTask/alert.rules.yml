@@ -1,0 +1,38 @@
+groups:
+  - name: service-alerts
+    rules:
+      - alert: MySQLDown
+        expr: probe_success{job="mysql_blackbox"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "MySQL is DOWN"
+          description: "The MySQL server on {{ $labels.instance }} is not reachable for more than 1 minute."
+
+      - alert: RedisDown
+        expr: probe_success{job="redis_blackbox"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis is DOWN"
+          description: "The Redis server on {{ $labels.instance }} is not reachable for more than 1 minute."
+
+      - alert: KafkaDown
+        expr: probe_success{job="kafka_blackbox"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Kafka is DOWN"
+          description: "The Kafka broker on {{ $labels.instance }} is not reachable for more than 1 minute."
+
+      - alert: LaravelHttpSlow
+        expr: probe_duration_seconds{job="laravel_http_blackbox"} > 2
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Laravel HTTP request is slow"
+          description: "Blackbox probe took more than 2s for {{ $labels.instance }}"
