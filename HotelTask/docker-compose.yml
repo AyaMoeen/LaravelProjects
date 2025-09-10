@@ -1,27 +1,4 @@
 services:
-  loki:
-    image: grafana/loki:2.9.0
-    ports:
-      - "3100:3100"
-    command: -config.file=/etc/loki/local-config.yaml
-
-  promtail:
-    image: grafana/promtail:2.9.0
-    volumes:
-      - ./promtail-config.yml:/etc/promtail/config.yml
-      - ./storage/logs:/var/log/laravel  
-      - ./storage/tmp_logs:/var/log/laravel/tmp_logs
-  
-    command: -config.file=/etc/promtail/config.yml
-
-  grafana:
-    image: grafana/grafana-enterprise:12.1.1
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./grafana-data:/var/lib/grafana
-
-
   prometheus:
     image: prom/prometheus:latest
     ports:
@@ -66,5 +43,31 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://host.docker.internal:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+
+
+#loki:
+  #   image: grafana/loki:2.9.0
+  #   ports:
+  #     - "3100:3100"
+  #   command: -config.file=/etc/loki/local-config.yaml
+
+  # promtail:
+  #   image: grafana/promtail:2.9.0
+  #   volumes:
+  #     - ./promtail-config.yml:/etc/promtail/config.yml
+  #     - ./storage/logs:/var/log/laravel  
+  #     - ./storage/tmp_logs:/var/log/laravel/tmp_logs
+  
+  #   command: -config.file=/etc/promtail/config.yml
+
+  # grafana:
+  #   image: grafana/grafana-enterprise:12.1.1
+  #   ports:
+  #     - "3000:3000"
+  #   volumes:
+  #     - ./grafana-data:/var/lib/grafana

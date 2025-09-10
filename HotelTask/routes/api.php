@@ -12,7 +12,7 @@ use Illuminate\Http\Request;
 use App\Services\KafkaService;
 
 Route::get('/slow-request', function () {
-    sleep(10);
+   // sleep(10);
     return response()->json(['message' => 'Slow request done!']);
 });
 
