@@ -1,3 +1,7 @@
+networks:
+  monitoring_net:
+    external: true
+
 services:
   prometheus:
     image: prom/prometheus:latest
@@ -10,6 +14,8 @@ services:
     depends_on:
       - blackbox
       - alertmanager
+    networks:
+      - monitoring_net
 
   blackbox:
     image: prom/blackbox-exporter:latest
@@ -17,15 +23,17 @@ services:
       - "9115:9115"
     volumes:
       - ./blackbox.yml:/etc/blackbox_exporter/config.yml
-
+    networks:
+      - monitoring_net
 
   alertmanager:
     image: prom/alertmanager
     ports:
       - "9093:9093"
     volumes:
-    - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
-
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    networks:
+      - monitoring_net
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
     environment:
@@ -47,6 +55,7 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+  
 
 
 

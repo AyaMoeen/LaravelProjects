@@ -36,3 +36,21 @@ groups:
         annotations:
           summary: "Laravel HTTP request is slow"
           description: "Blackbox probe took more than 2s for {{ $labels.instance }}"
+          
+      - alert: Project2Down
+        expr: probe_success{job="secoundproject_http"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Project 2 (Laravel) is DOWN"
+          description: "The Laravel container (Project 2) is not responding on {{ $labels.instance }} for more than 1 minute."
+
+      # - alert: ContainerDown
+      #   expr: up{job="cadvisor"} == 0
+      #   for: 1m
+      #   labels:
+      #     severity: critical
+      #   annotations:
+      #     summary: "Container is DOWN"
+      #     description: "Container {{ $labels.container_label_com_docker_compose_service }} is not running."
