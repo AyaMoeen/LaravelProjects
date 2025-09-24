@@ -1,63 +1,237 @@
 networks:
-  monitoring_net:
-    external: true
+  db-network:
+    driver: bridge
+
+volumes:
+  primary_data:
+  secondary_data:
+  secondary2_data:
+  router_data:
 
 services:
-  prometheus:
-    image: prom/prometheus:latest
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-      - ./alert.rules.yml:/etc/prometheus/alert.rules.yml  
-      - ./prometheus/sd:/etc/prometheus/sd
-    depends_on:
-      - blackbox
-      - alertmanager
-    networks:
-      - monitoring_net
-
-  blackbox:
-    image: prom/blackbox-exporter:latest
-    ports:
-      - "9115:9115"
-    volumes:
-      - ./blackbox.yml:/etc/blackbox_exporter/config.yml
-    networks:
-      - monitoring_net
-
-  alertmanager:
-    image: prom/alertmanager
-    ports:
-      - "9093:9093"
-    volumes:
-      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
-    networks:
-      - monitoring_net
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.5.0
+  # Primary MySQL Database
+  mysql-primary:
+    image: mysql:8.0
+    container_name: mysql-primary
     environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: hoteldb
+      MYSQL_USER: myuser
+      MYSQL_PASSWORD: mypassword
     ports:
-      - "2181:2181"
+      - "3307:3306"  # Exposed for monitoring
+    volumes:
+      - primary_data:/var/lib/mysql
+      - ./primary/my.cnf:/etc/mysql/conf.d/custom.cnf
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - db-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-prootpassword"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    command: --server-id=1 --log-bin=mysql-bin --binlog-format=ROW --gtid-mode=ON --enforce-gtid-consistency=ON
 
-  kafka:
-    image: confluentinc/cp-kafka:7.5.0
-    depends_on:
-      - zookeeper
-    ports:
-      - "9092:9092"
+  # Secondary MySQL Database (Replica)
+  mysql-secondary:
+    image: mysql:8.0
+    container_name: mysql-secondary
     environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://host.docker.internal:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: hoteldb
+      MYSQL_USER: myuser
+      MYSQL_PASSWORD: mypassword
+    ports:
+      - "3308:3306"  # Exposed for monitoring
+    volumes:
+      - secondary_data:/var/lib/mysql
+      - ./secondary/my.cnf:/etc/mysql/conf.d/custom.cnf
+    networks:
+      - db-network
+    depends_on:
+      - mysql-primary
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-prootpassword"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    command: --server-id=2 --log-bin=mysql-bin --binlog-format=ROW --gtid-mode=ON --enforce-gtid-consistency=ON --read-only=1
+
+  # MySQL Router for Automatic Failover
+  mysql-router:
+    image: mysql:8.0
+    container_name: mysql-router
+    ports:
+      - "3306:3306"
+      - "3309:3307"
+    volumes:
+      - ./mysql-router:/etc/mysqlrouter
+    networks:
+      - db-network
+    depends_on:
+      - mysql-primary
+      - mysql-secondary
+    restart: unless-stopped
+    command: >
+      sh -c "
+      microdnf update -y && 
+      microdnf install -y mysql-router && 
+      mysqlrouter --config /etc/mysqlrouter/mysqlrouter.conf --user=mysqlrouter
+      "
+
+
+
+  # Optional: Adminer for Database Management
+  adminer:
+    image: adminer
+    container_name: adminer
+    ports:
+      - "8080:8080"
+    networks:
+      - db-network
+    restart: unless-stopped
+# networks:
+#   monitoring_net:
+#     external: true
+#   cluster_net:
+#     driver: bridge
+
+# services:
+#   ndb_mgmd:
+#     container_name: ndb_mgmd
+#     image: mysql/mysql-cluster:8.0
+#     command: 
+#       - sh
+#       - -c
+#       - |
+#         mkdir -p /var/lib/mysql
+#         ndb_mgmd -f /etc/mysql-cluster/config.ini --initial --ndb-nodeid=1 --bind-address=0.0.0.0
+#         sleep infinity  # Keep container running
+#     volumes:
+#       - ./config.ini:/etc/mysql-cluster/config.ini
+#       # - ./ndb_data_mgmd:/var/lib/mysql-cluster
+#     networks:
+#       - cluster_net
+
+#   ndb1:
+#     container_name: ndb1
+#     image: mysql/mysql-cluster:8.0
+#     command: ndbd --ndb-connectstring=ndb_mgmd
+#     volumes:
+#       - ./ndb_data_node1:/var/lib/mysql-cluster
+#     networks:
+#       - cluster_net
+#     depends_on:
+#       - ndb_mgmd
+
+#   ndb2:
+#     container_name: ndb2
+#     image: mysql/mysql-cluster:8.0
+#     command: ndbd --ndb-connectstring=ndb_mgmd
+#     volumes:
+#       - ./ndb_data_node2:/var/lib/mysql-cluster
+#     networks:
+#       - cluster_net
+#     depends_on:
+#       - ndb_mgmd
+
+
+#   mysqld1:
+#     container_name: mysqld1
+#     image: mysql/mysql-cluster:8.0
+#     environment:
+#       MYSQL_ROOT_PASSWORD: rootpass
+#     ports:
+#       - "3307:3306"
+#     command: mysqld --ndbcluster --ndb-connectstring=ndb_mgmd
+#     networks:
+#       - cluster_net
+#     depends_on:
+#       - ndb1
+#       - ndb2
+
+#   mysqld2:
+#     container_name: mysqld2
+#     image: mysql/mysql-cluster:8.0
+#     environment:
+#       MYSQL_ROOT_PASSWORD: rootpass
+#     ports:
+#       - "3308:3306"
+#     command: mysqld --ndbcluster --ndb-connectstring=ndb_mgmd
+#     networks:
+#       - cluster_net
+#     depends_on:
+#       - ndb1
+#       - ndb2
+
+#   phpmyadmin:
+#     image: phpmyadmin/phpmyadmin:5.2.1
+#     environment:
+#       PMA_HOST: mysqld1
+#       PMA_USER: root
+#       PMA_PASSWORD: rootpass
+#     ports:
+#       - "8081:80"
+#     depends_on:
+#       - mysqld1
+#     networks:
+#       - cluster_net
   
+  # prometheus:
+  #   image: prom/prometheus:latest
+  #   ports:
+  #     - "9090:9090"
+  #   volumes:
+  #     - ./prometheus.yml:/etc/prometheus/prometheus.yml
+  #     - ./alert.rules.yml:/etc/prometheus/alert.rules.yml  
+  #     - ./prometheus/sd:/etc/prometheus/sd
+  #   depends_on:
+  #     - blackbox
+  #     - alertmanager
+  #   networks:
+  #     - monitoring_net
 
+  # blackbox:
+  #   image: prom/blackbox-exporter:latest
+  #   ports:
+  #     - "9115:9115"
+  #   volumes:
+  #     - ./blackbox.yml:/etc/blackbox_exporter/config.yml
+  #   networks:
+  #     - monitoring_net
 
+  # alertmanager:
+  #   image: prom/alertmanager
+  #   ports:
+  #     - "9093:9093"
+  #   volumes:
+  #     - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
+  #   networks:
+  #     - monitoring_net
+  # zookeeper:
+  #   image: confluentinc/cp-zookeeper:7.5.0
+  #   environment:
+  #     ZOOKEEPER_CLIENT_PORT: 2181
+  #     ZOOKEEPER_TICK_TIME: 2000
+  #   ports:
+  #     - "2181:2181"
+
+  # kafka:
+  #   image: confluentinc/cp-kafka:7.5.0
+  #   depends_on:
+  #     - zookeeper
+  #   ports:
+  #     - "9092:9092"
+  #   environment:
+  #     KAFKA_BROKER_ID: 1
+  #     KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+  #     KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://host.docker.internal:9092
+  #     KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT 
+  #     KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+  #     KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
 #loki:
   #   image: grafana/loki:2.9.0
