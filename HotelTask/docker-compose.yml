@@ -9,21 +9,19 @@ volumes:
   router_data:
 
 services:
-  # Primary MySQL Database
   mysql-primary:
     image: mysql:8.0
     container_name: mysql-primary
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword
       MYSQL_DATABASE: hoteldb
-      MYSQL_USER: myuser
-      MYSQL_PASSWORD: mypassword
     ports:
-      - "3307:3306"  # Exposed for monitoring
+      - "3307:3306"  
     volumes:
       - primary_data:/var/lib/mysql
       - ./primary/my.cnf:/etc/mysql/conf.d/custom.cnf
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
     networks:
       - db-network
     restart: unless-stopped
@@ -34,17 +32,14 @@ services:
       retries: 10
     command: --server-id=1 --log-bin=mysql-bin --binlog-format=ROW --gtid-mode=ON --enforce-gtid-consistency=ON
 
-  # Secondary MySQL Database (Replica)
   mysql-secondary:
     image: mysql:8.0
     container_name: mysql-secondary
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword
       MYSQL_DATABASE: hoteldb
-      MYSQL_USER: myuser
-      MYSQL_PASSWORD: mypassword
     ports:
-      - "3308:3306"  # Exposed for monitoring
+      - "3308:3306"  
     volumes:
       - secondary_data:/var/lib/mysql
       - ./secondary/my.cnf:/etc/mysql/conf.d/custom.cnf
@@ -60,7 +55,6 @@ services:
       retries: 10
     command: --server-id=2 --log-bin=mysql-bin --binlog-format=ROW --gtid-mode=ON --enforce-gtid-consistency=ON --read-only=1
 
-  # MySQL Router for Automatic Failover
   mysql-router:
     image: mysql:8.0
     container_name: mysql-router
@@ -82,9 +76,6 @@ services:
       mysqlrouter --config /etc/mysqlrouter/mysqlrouter.conf --user=mysqlrouter
       "
 
-
-
-  # Optional: Adminer for Database Management
   adminer:
     image: adminer
     container_name: adminer
@@ -93,6 +84,20 @@ services:
     networks:
       - db-network
     restart: unless-stopped
+
+  mysql-watchdog:
+    image: mysql:8.0
+    container_name: mysql-watchdog
+    volumes:
+      - ./scripts/watchdog.sh:/usr/local/bin/watchdog.sh:ro
+    entrypoint: ["/bin/sh", "/usr/local/bin/watchdog.sh"]
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+    networks:
+      - db-network
+    restart: unless-stopped
+  
+#####################
 # networks:
 #   monitoring_net:
 #     external: true

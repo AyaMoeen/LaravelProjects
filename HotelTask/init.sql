@@ -16,7 +16,7 @@
 -- Generation Time: Sep 14, 2025 at 01:38 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
-
+-- Create replication user on primary
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
 SET time_zone = "+00:00";
@@ -33,6 +33,9 @@ SET time_zone = "+00:00";
 CREATE DATABASE IF NOT EXISTS `hoteldb`;
 USE `hoteldb`;
 
+-- Create application user
+CREATE USER IF NOT EXISTS 'myuser'@'%' IDENTIFIED BY 'mypassword';
+GRANT ALL PRIVILEGES ON . TO 'myuser'@'%';
 -- --------------------------------------------------------
 
 --
