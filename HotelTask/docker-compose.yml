@@ -7,6 +7,8 @@ volumes:
   secondary_data:
   secondary2_data:
   router_data:
+  backup_data:
+  restore_data_for_backup:
 
 services:
   mysql-primary:
@@ -75,7 +77,6 @@ services:
       microdnf install -y mysql-router && 
       mysqlrouter --config /etc/mysqlrouter/mysqlrouter.conf --user=mysqlrouter
       "
-
   adminer:
     image: adminer
     container_name: adminer
@@ -97,6 +98,46 @@ services:
       - db-network
     restart: unless-stopped
   
+  mysql-backup:
+    build: .
+    container_name: mysql-backup
+    volumes:
+      - backup_data:/backups
+      - secondary_data:/var/lib/mysql
+    networks:
+      - db-network
+    restart: unless-stopped
+  
+  # Add this to your docker-compose.yml services section
+  mysql-restore:
+    image: mysql:8.0
+    container_name: mysql-restore
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: hoteldb
+    ports:
+      - "3310:3306"  # Different port than existing containers
+    volumes:
+      - restore_data_for_backup:/var/lib/mysql
+      - ./restore/my.cnf:/etc/mysql/conf.d/custom.cnf
+    networks:
+      - db-network
+    restart: unless-stopped
+  
+  # mysql-restore-test:
+  #   image: mysql:8.0
+  #   container_name: mysql-restore-test
+  #   ports:
+  #     - "3310:3306"   # expose on a different port
+  #   volumes:
+  #     - backup_data:/backups
+  #     - ./restore_data:/restore_data           # mount your existing backups
+  #   networks:
+  #     - db-network
+  #   restart: "no"
+  #   command: mysqld --skip-grant-tables --datadir=/var/lib/mysql
+
+
 #####################
 # networks:
 #   monitoring_net:
