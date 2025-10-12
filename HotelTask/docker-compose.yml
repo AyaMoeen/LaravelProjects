@@ -9,6 +9,8 @@ volumes:
   router_data:
   backup_data:
   restore_data_for_backup:
+  archive_logs:
+  pmm_data:
 
 services:
   mysql-primary:
@@ -104,11 +106,11 @@ services:
     volumes:
       - backup_data:/backups
       - secondary_data:/var/lib/mysql
+      - archive_logs:/archive-logs 
     networks:
       - db-network
     restart: unless-stopped
   
-  # Add this to your docker-compose.yml services section
   mysql-restore:
     image: mysql:8.0
     container_name: mysql-restore
@@ -124,19 +126,35 @@ services:
       - db-network
     restart: unless-stopped
   
-  # mysql-restore-test:
-  #   image: mysql:8.0
-  #   container_name: mysql-restore-test
-  #   ports:
-  #     - "3310:3306"   # expose on a different port
-  #   volumes:
-  #     - backup_data:/backups
-  #     - ./restore_data:/restore_data           # mount your existing backups
-  #   networks:
-  #     - db-network
-  #   restart: "no"
-  #   command: mysqld --skip-grant-tables --datadir=/var/lib/mysql
-
+  percona-pmm:
+    image: percona/pmm-server:2
+    container_name: percona-pmm
+    ports:
+      - "8081:80"  # PMM web interface
+    environment:
+      - ENABLE_DBAAS=0
+      - DISABLE_UPDATES=1
+    volumes:
+      - pmm_data:/srv
+    networks:
+      - db-network
+    restart: unless-stopped
+  
+  percona-pmm-client:
+    image: percona/pmm-client:2
+    container_name: percona-pmm-client
+    environment:
+      - BACKUP_STORAGE=/backups
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./pmm-setup.sh:/pmm-setup.sh
+      - backup_data:/backups 
+    networks:
+      - db-network
+    depends_on:
+      - percona-pmm
+    restart: unless-stopped
+    entrypoint: ["sh", "/pmm-setup.sh"]
 
 #####################
 # networks:
